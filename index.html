@@ -431,13 +431,16 @@ function detectSemesters(raw) {
 function parseGrade(val) {
   if (val == null || val === '' || val === undefined) return { score: '', grade: '', gpa: '' };
   const s = String(val).trim();
-  if (!s || s === 'undefined') return { score: '', grade: '', gpa: '' };
-  // 58.75 D+ 1.33
-  let m = s.match(/^([\d.]+)\s+([A-Z][+-]?)\s+([\d.]+)$/);
+  if (!s || s === 'undefined' || s === 'null') return { score: '', grade: '', gpa: '' };
+
+  // 58.75 D+ 1.33  ё  47.5 Fx 0  (балл + баҳо + гпа)
+  let m = s.match(/^([\d.]+)\s+([A-Z][a-zA-Z+-]*)\s+([\d.]+)$/);
   if (m) return { score: m[1], grade: m[2], gpa: m[3] };
-  // F 0
-  m = s.match(/^([A-Z][+-]?)\s+([\d.]+)$/);
+
+  // F 0  ё  Fx 0  (баҳо + гпа, бе балл)
+  m = s.match(/^([A-Z][a-zA-Z+-]*)\s+([\d.]+)$/);
   if (m) return { score: '', grade: m[1], gpa: m[2] };
+
   return { score: s, grade: '', gpa: '' };
 }
 
