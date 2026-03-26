@@ -400,18 +400,33 @@
 </div>
 
 <script>
-const SEMESTERS = [
-  { name: 'Семестри 1', cols: [2, 13] },
-  { name: 'Семестри 2', cols: [14, 24] },
-  { name: 'Семестри 3', cols: [25, 35] },
-  { name: 'Семестри 4', cols: [36, 48] },
-  { name: 'Семестри 5', cols: [49, 56] },
-  { name: 'Семестри 6', cols: [57, 66] },
-  { name: 'Семестри 7', cols: [67, 75] },
-  { name: 'Семестри 8', cols: [76, 80] },
-];
-
+let SEMESTERS = [];
 let globalData = null;
+
+// Автоматӣ семестрҳоро аз файл пайдо мекунад
+function detectSemesters(raw) {
+  const semRow = raw[5] || [];
+  const found = [];
+  for (let c = 0; c < semRow.length; c++) {
+    const val = semRow[c];
+    if (val && String(val).trim().match(/Семестр/i)) {
+      found.push({ name: String(val).trim(), startCol: c });
+    }
+  }
+  const result = [];
+  for (let i = 0; i < found.length; i++) {
+    const start = found[i].startCol;
+    const end = i + 1 < found.length ? found[i + 1].startCol - 1 : semRow.length - 1;
+    let realEnd = start;
+    for (let c = start; c <= end; c++) {
+      if (raw[6] && raw[6][c] && String(raw[6][c]).trim()) realEnd = c;
+    }
+    if (realEnd >= start) {
+      result.push({ name: found[i].name, cols: [start, realEnd] });
+    }
+  }
+  return result;
+}
 
 function parseGrade(val) {
   if (val == null || val === '' || val === undefined) return { score: '', grade: '', gpa: '' };
@@ -434,6 +449,7 @@ function processFile(file) {
     const ws = wb.Sheets[wb.SheetNames[0]];
     const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
     globalData = raw;
+    SEMESTERS = detectSemesters(raw);
     renderApp(raw);
   };
   reader.readAsArrayBuffer(file);
@@ -460,7 +476,7 @@ function renderApp(raw) {
 
   document.getElementById('infoBar').innerHTML = `
     <div class="info-item">Донишҷӯён: <span>${students.length} нафар</span></div>
-    <div class="info-item">Семестрҳо: <span>8</span></div>
+    <div class="info-item">Семестрҳо: <span>${SEMESTERS.length}</span></div>
     <div class="info-item">${groupInfo}</div>
   `;
 
@@ -665,7 +681,7 @@ function downloadSemester(sIdx) {
 }
 
 function downloadAll() {
-  const wb = buildWorkbook([0,1,2,3,4,5,6,7]);
+  const wb = buildWorkbook(SEMESTERS.map((_, i) => i));
   XLSX.writeFile(wb, 'Ҳамаи_Семестрҳо.xlsx');
 }
 
