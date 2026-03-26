@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="tg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Варақаи Рейтингӣ</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #0f1f3d;
+    --blue: #1a3a6b;
+    --accent: #c8a951;
+    --accent2: #e8c97a;
+    --score-bg: #e8f4e8;
+    --score-c: #1a6b2f;
+    --grade-bg: #fff8e8;
+    --grade-c: #7a5200;
+    --gpa-bg: #fce8e8;
+    --gpa-c: #7a1a1a;
+    --bg: #f4f1eb;
+    --card: #ffffff;
+    --border: #ddd8cc;
+    --text: #1a1a2e;
+    --muted: #6b6b7b;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Source Sans 3', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ===== HEADER ===== */
+  .header {
+    background: var(--navy);
+    padding: 32px 40px 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 240px; height: 240px;
+    border: 40px solid rgba(200,169,81,0.15);
+    border-radius: 50%;
+  }
+  .header::after {
+    content: '';
+    position: absolute;
+    bottom: -30px; left: 120px;
+    width: 120px; height: 120px;
+    border: 20px solid rgba(200,169,81,0.1);
+    border-radius: 50%;
+  }
+  .header h1 {
+    font-family: 'Playfair Display', serif;
+    color: var(--accent);
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    position: relative;
+  }
+  .header p {
+    color: rgba(255,255,255,0.55);
+    font-size: 13px;
+    margin-top: 4px;
+    font-weight: 300;
+    position: relative;
+  }
+
+  /* ===== UPLOAD ZONE ===== */
+  .upload-section {
+    max-width: 680px;
+    margin: 48px auto;
+    padding: 0 24px;
+    text-align: center;
+  }
+  .drop-zone {
+    border: 2px dashed var(--accent);
+    border-radius: 16px;
+    padding: 60px 40px;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: linear-gradient(135deg, rgba(200,169,81,0.04), rgba(200,169,81,0.01));
+    position: relative;
+  }
+  .drop-zone:hover, .drop-zone.dragover {
+    background: linear-gradient(135deg, rgba(200,169,81,0.1), rgba(200,169,81,0.04));
+    border-color: var(--accent2);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(200,169,81,0.15);
+  }
+  .drop-icon {
+    font-size: 56px;
+    display: block;
+    margin-bottom: 16px;
+    animation: float 3s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%,100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+  .drop-zone h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    color: var(--navy);
+    margin-bottom: 8px;
+  }
+  .drop-zone p { color: var(--muted); font-size: 14px; }
+  .drop-zone input { display: none; }
+  .btn-upload {
+    display: inline-block;
+    margin-top: 20px;
+    padding: 12px 32px;
+    background: var(--navy);
+    color: var(--accent);
+    border: 2px solid var(--accent);
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s;
+    font-family: 'Source Sans 3', sans-serif;
+  }
+  .btn-upload:hover {
+    background: var(--accent);
+    color: var(--navy);
+  }
+
+  /* ===== MAIN CONTENT ===== */
+  #app { display: none; padding: 0 0 60px; }
+
+  .info-bar {
+    background: var(--navy);
+    padding: 12px 40px;
+    display: flex;
+    gap: 24px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .info-item { color: rgba(255,255,255,0.7); font-size: 13px; }
+  .info-item span { color: var(--accent); font-weight: 600; }
+
+  /* ===== SEMESTER TABS ===== */
+  .tabs-wrap {
+    background: var(--card);
+    border-bottom: 2px solid var(--border);
+    padding: 0 32px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    overflow-x: auto;
+  }
+  .tab-btn {
+    padding: 16px 20px;
+    border: none;
+    background: none;
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+    transition: all 0.2s;
+    margin-bottom: -2px;
+  }
+  .tab-btn:hover { color: var(--blue); }
+  .tab-btn.active {
+    color: var(--navy);
+    border-bottom-color: var(--accent);
+  }
+
+  /* ===== SEMESTER PANEL ===== */
+  .semester-panel { display: none; padding: 32px 24px 16px; }
+  .semester-panel.active { display: block; }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .panel-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 24px;
+    color: var(--navy);
+  }
+  .panel-title small {
+    display: block;
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .btn-download {
+    padding: 10px 24px;
+    background: var(--navy);
+    color: var(--accent);
+    border: 2px solid var(--accent);
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s;
+    font-family: 'Source Sans 3', sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn-download:hover { background: var(--accent); color: var(--navy); }
+
+  /* ===== TABLE ===== */
+  .table-scroll {
+    overflow-x: auto;
+    border-radius: 12px;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.07);
+    border: 1px solid var(--border);
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 12px;
+    background: white;
+  }
+  thead tr:first-child th {
+    background: var(--navy);
+    color: var(--accent);
+    font-family: 'Playfair Display', serif;
+    font-size: 11px;
+    padding: 10px 6px;
+    border: 1px solid rgba(255,255,255,0.12);
+    text-align: center;
+    position: sticky;
+    top: 52px;
+  }
+  thead tr:last-child th {
+    padding: 7px 4px;
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
+    border: 1px solid var(--border);
+    position: sticky;
+    top: 82px;
+  }
+  .th-score { background: #1a5c2a; color: #fff; }
+  .th-grade { background: #5c4a00; color: #fff; }
+  .th-gpa   { background: #5c1a1a; color: #fff; }
+  .th-num   { background: #2a2a4a; color: #aaa; }
+  .th-name  { background: #2a2a4a; color: #ddd; }
+
+  tbody tr:nth-child(even) { background: #fafaf8; }
+  tbody tr:hover { background: #f0ede4 !important; }
+  td {
+    padding: 9px 5px;
+    border: 1px solid #eee;
+    text-align: center;
+    vertical-align: middle;
+  }
+  td.td-num {
+    color: var(--muted);
+    font-weight: 700;
+    font-size: 11px;
+    min-width: 36px;
+  }
+  td.td-name {
+    text-align: left;
+    font-weight: 600;
+    min-width: 200px;
+    padding-left: 12px;
+    font-size: 12px;
+    color: var(--navy);
+  }
+  td.td-score {
+    background: var(--score-bg);
+    color: var(--score-c);
+    font-weight: 700;
+    min-width: 54px;
+    font-size: 11px;
+  }
+  td.td-grade {
+    background: var(--grade-bg);
+    color: var(--grade-c);
+    font-weight: 700;
+    min-width: 38px;
+  }
+  td.td-gpa {
+    background: var(--gpa-bg);
+    color: var(--gpa-c);
+    font-weight: 700;
+    min-width: 38px;
+  }
+  td.td-empty { background: #f8f8f8; color: #ccc; font-size: 10px; }
+
+  .subj-header { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 10px; max-height: 120px; display: inline-block; }
+
+  /* ===== DOWNLOAD ALL ===== */
+  .download-all-bar {
+    background: var(--navy);
+    padding: 16px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .download-all-bar p { color: rgba(255,255,255,0.65); font-size: 13px; }
+  .btn-download-all {
+    padding: 12px 32px;
+    background: var(--accent);
+    color: var(--navy);
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Source Sans 3', sans-serif;
+    transition: all 0.25s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn-download-all:hover { background: var(--accent2); transform: translateY(-1px); }
+
+  /* ===== LEGEND ===== */
+  .legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .leg-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .leg-dot {
+    width: 14px; height: 14px;
+    border-radius: 3px;
+  }
+
+  .loading {
+    text-align: center;
+    padding: 40px;
+    color: var(--muted);
+    font-size: 16px;
+  }
+</style>
+</head>
+<body>
+
+<!-- UPLOAD -->
+<div id="upload-section">
+  <div class="header">
+    <h1>📊 Варақаи Рейтингӣ</h1>
+    <p>Системаи намоиши баҳои семестрӣ · Коллеҷи Тиббӣ-Инноватсионӣ</p>
+  </div>
+  <div class="upload-section">
+    <div class="drop-zone" id="dropZone">
+      <span class="drop-icon">📁</span>
+      <h2>Файли Excel-ро бор кунед</h2>
+      <p>Файли .xlsx-и варақаи ҷамбастии имтиҳонотиро интихоб кунед</p>
+      <input type="file" id="fileInput" accept=".xlsx,.xls">
+      <br>
+      <label for="fileInput" class="btn-upload">📂 Файл интихоб кунед</label>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="header">
+    <h1>📊 Варақаи Рейтингӣ</h1>
+    <p id="headerInfo">Системаи намоиши баҳои семестрӣ</p>
+  </div>
+  <div class="info-bar" id="infoBar"></div>
+
+  <div class="download-all-bar">
+    <p>Ҳамаи семестрҳоро бо форматбандӣ ба Excel боргирӣ кунед</p>
+    <button class="btn-download-all" onclick="downloadAll()">⬇ Ҳама семестрҳо (Excel)</button>
+  </div>
+
+  <div class="tabs-wrap" id="tabsWrap"></div>
+  <div id="panels"></div>
+</div>
+
+<script>
+const SEMESTERS = [
+  { name: 'Семестри 1', cols: [2, 13] },
+  { name: 'Семестри 2', cols: [14, 24] },
+  { name: 'Семестри 3', cols: [25, 35] },
+  { name: 'Семестри 4', cols: [36, 48] },
+  { name: 'Семестри 5', cols: [49, 56] },
+  { name: 'Семестри 6', cols: [57, 66] },
+  { name: 'Семестри 7', cols: [67, 75] },
+  { name: 'Семестри 8', cols: [76, 80] },
+];
+
+let globalData = null;
+
+function parseGrade(val) {
+  if (val == null || val === '' || val === undefined) return { score: '', grade: '', gpa: '' };
+  const s = String(val).trim();
+  if (!s || s === 'undefined') return { score: '', grade: '', gpa: '' };
+  // 58.75 D+ 1.33
+  let m = s.match(/^([\d.]+)\s+([A-Z][+-]?)\s+([\d.]+)$/);
+  if (m) return { score: m[1], grade: m[2], gpa: m[3] };
+  // F 0
+  m = s.match(/^([A-Z][+-]?)\s+([\d.]+)$/);
+  if (m) return { score: '', grade: m[1], gpa: m[2] };
+  return { score: s, grade: '', gpa: '' };
+}
+
+function processFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const data = new Uint8Array(e.target.result);
+    const wb = XLSX.read(data, { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+    globalData = raw;
+    renderApp(raw);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderApp(raw) {
+  document.getElementById('upload-section').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+
+  // Мета
+  const groupInfo = raw[3] ? String(raw[3][0] || '').trim() : '';
+  document.getElementById('headerInfo').textContent = groupInfo;
+
+  // Донишҷӯён
+  const students = [];
+  for (let i = 8; i < raw.length; i++) {
+    const row = raw[i];
+    if (!row) continue;
+    const name = row[1];
+    if (name && String(name).trim()) {
+      students.push({ rowIdx: i, name: String(name).trim(), num: String(row[0] || '').trim() });
+    }
+  }
+
+  document.getElementById('infoBar').innerHTML = `
+    <div class="info-item">Донишҷӯён: <span>${students.length} нафар</span></div>
+    <div class="info-item">Семестрҳо: <span>8</span></div>
+    <div class="info-item">${groupInfo}</div>
+  `;
+
+  const tabsWrap = document.getElementById('tabsWrap');
+  const panels = document.getElementById('panels');
+  tabsWrap.innerHTML = '';
+  panels.innerHTML = '';
+
+  SEMESTERS.forEach((sem, sIdx) => {
+    // Фанҳо
+    const subjects = [];
+    for (let c = sem.cols[0]; c <= sem.cols[1]; c++) {
+      const subj = raw[6] ? raw[6][c] : null;
+      const cr = raw[7] ? raw[7][c] : null;
+      if (subj) subjects.push({ col: c, name: String(subj).trim(), credit: cr ? String(cr).trim() : '' });
+    }
+
+    // Tab
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn' + (sIdx === 0 ? ' active' : '');
+    btn.textContent = sem.name;
+    btn.onclick = () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.semester-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-' + sIdx).classList.add('active');
+    };
+    tabsWrap.appendChild(btn);
+
+    // Panel
+    const panel = document.createElement('div');
+    panel.className = 'semester-panel' + (sIdx === 0 ? ' active' : '');
+    panel.id = 'panel-' + sIdx;
+
+    // Ҷадвал
+    let thead1 = `<tr>
+      <th class="th-num" rowspan="2" style="min-width:36px">№</th>
+      <th class="th-name" rowspan="2" style="min-width:200px;text-align:left;padding-left:10px">Ному насаби донишҷӯ</th>`;
+    subjects.forEach(s => {
+      thead1 += `<th colspan="3" style="font-size:10px;max-width:90px;padding:6px 4px">
+        <div class="subj-header">${s.name}</div>
+        <div style="font-size:9px;color:rgba(200,169,81,0.7);margin-top:2px">${s.credit}</div>
+      </th>`;
+    });
+    thead1 += '</tr>';
+
+    let thead2 = '<tr>';
+    subjects.forEach(() => {
+      thead2 += `<th class="th-score">Балл</th><th class="th-grade">Баҳо</th><th class="th-gpa">ГПА</th>`;
+    });
+    thead2 += '</tr>';
+
+    let tbody = '';
+    students.forEach((st, stIdx) => {
+      const row = raw[st.rowIdx] || [];
+      tbody += `<tr>
+        <td class="td-num">${stIdx + 1}</td>
+        <td class="td-name">${st.name}</td>`;
+      subjects.forEach(s => {
+        const { score, grade, gpa } = parseGrade(row[s.col]);
+        tbody += `<td class="td-score">${score}</td>
+                  <td class="td-grade">${grade}</td>
+                  <td class="td-gpa">${gpa}</td>`;
+      });
+      tbody += '</tr>';
+    });
+
+    panel.innerHTML = `
+      <div class="panel-header">
+        <div class="panel-title">
+          ${sem.name}
+          <small>${subjects.length} фан · ${students.length} донишҷӯ</small>
+        </div>
+        <button class="btn-download" onclick="downloadSemester(${sIdx})">⬇ Excel боргирӣ</button>
+      </div>
+      <div class="legend">
+        <div class="leg-item"><div class="leg-dot" style="background:#c8e6c9"></div>Балл (рақам)</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#fff8e1"></div>Баҳо (ҳарф)</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#ffebee"></div>ГПА (коэффитсиент)</div>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>${thead1}${thead2}</thead>
+          <tbody>${tbody}</tbody>
+        </table>
+      </div>`;
+
+    panels.appendChild(panel);
+  });
+}
+
+function buildWorkbook(semIndexes) {
+  if (!globalData) return;
+  const raw = globalData;
+
+  const students = [];
+  for (let i = 8; i < raw.length; i++) {
+    const row = raw[i];
+    if (!row) continue;
+    const name = row[1];
+    if (name && String(name).trim()) {
+      students.push({ rowIdx: i, name: String(name).trim() });
+    }
+  }
+
+  const wb = XLSX.utils.book_new();
+
+  const COLORS = {
+    navy:  '0F1F3D',
+    accent:'C8A951',
+    score_bg:'E8F4E8', score_c:'1A6B2F',
+    grade_bg:'FFF8E8', grade_c:'7A5200',
+    gpa_bg:  'FCE8E8', gpa_c:  '7A1A1A',
+    alt:   'F4F1EB',
+    white: 'FFFFFF',
+    hdr2:  '1A3A6B',
+  };
+
+  semIndexes.forEach(sIdx => {
+    const sem = SEMESTERS[sIdx];
+    const subjects = [];
+    for (let c = sem.cols[0]; c <= sem.cols[1]; c++) {
+      const subj = raw[6] ? raw[6][c] : null;
+      const cr = raw[7] ? raw[7][c] : null;
+      if (subj) subjects.push({ col: c, name: String(subj).trim(), credit: cr ? String(cr).trim() : '' });
+    }
+
+    const wsData = [];
+    const totalCols = 2 + subjects.length * 3;
+
+    // Row 0: умумӣ сарлавҳа
+    const titleRow = new Array(totalCols).fill('');
+    titleRow[0] = sem.name + ' — Варақаи Ҷамбастии Имтиҳонотӣ';
+    wsData.push(titleRow);
+
+    // Row 1: №, Ном, ва номи фанҳо (ҳар фан 3 сутун)
+    const subjRow = new Array(totalCols).fill('');
+    subjRow[0] = '№';
+    subjRow[1] = 'Ному насаби донишҷӯ';
+    subjects.forEach((s, idx) => { subjRow[2 + idx * 3] = s.name; });
+    wsData.push(subjRow);
+
+    // Row 2: кредитҳо
+    const creditRow = new Array(totalCols).fill('');
+    creditRow[0] = '';
+    creditRow[1] = '';
+    subjects.forEach((s, idx) => { creditRow[2 + idx * 3] = s.credit; });
+    wsData.push(creditRow);
+
+    // Row 3: Балл | Баҳо | ГПА
+    const subRow = new Array(totalCols).fill('');
+    subRow[0] = '№';
+    subRow[1] = 'Ному насаби донишҷӯ';
+    subjects.forEach((s, idx) => {
+      subRow[2 + idx * 3]     = 'Балл';
+      subRow[2 + idx * 3 + 1] = 'Баҳо';
+      subRow[2 + idx * 3 + 2] = 'ГПА';
+    });
+    wsData.push(subRow);
+
+    // Донишҷӯён
+    students.forEach((st, stIdx) => {
+      const row = raw[st.rowIdx] || [];
+      const dataRow = [stIdx + 1, st.name];
+      subjects.forEach(s => {
+        const { score, grade, gpa } = parseGrade(row[s.col]);
+        dataRow.push(score, grade, gpa);
+      });
+      wsData.push(dataRow);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    // Бараш
+    const colWidths = [{ wch: 5 }, { wch: 32 }];
+    subjects.forEach(() => { colWidths.push({ wch: 9 }, { wch: 7 }, { wch: 7 }); });
+    ws['!cols'] = colWidths;
+
+    // Merge-ҳо
+    const merges = [];
+    // Сатри 0: умумӣ сарлавҳа
+    merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } });
+    // Сатрҳои 1-3: №ва Ном
+    merges.push({ s: { r: 1, c: 0 }, e: { r: 3, c: 0 } });
+    merges.push({ s: { r: 1, c: 1 }, e: { r: 3, c: 1 } });
+    // Ҳар фан: номи фан (сатр 1-2) merge 3 сутун
+    subjects.forEach((s, idx) => {
+      merges.push({ s: { r: 1, c: 2 + idx * 3 }, e: { r: 1, c: 2 + idx * 3 + 2 } });
+      merges.push({ s: { r: 2, c: 2 + idx * 3 }, e: { r: 2, c: 2 + idx * 3 + 2 } });
+    });
+    ws['!merges'] = merges;
+
+    XLSX.utils.book_append_sheet(wb, ws, sem.name);
+  });
+
+  return wb;
+}
+
+function downloadSemester(sIdx) {
+  const wb = buildWorkbook([sIdx]);
+  XLSX.writeFile(wb, `${SEMESTERS[sIdx].name}.xlsx`);
+}
+
+function downloadAll() {
+  const wb = buildWorkbook([0,1,2,3,4,5,6,7]);
+  XLSX.writeFile(wb, 'Ҳамаи_Семестрҳо.xlsx');
+}
+
+// ===== DRAG & DROP =====
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+});
+fileInput.addEventListener('change', e => {
+  if (e.target.files[0]) processFile(e.target.files[0]);
+});
+</script>
+</body>
+</html>
